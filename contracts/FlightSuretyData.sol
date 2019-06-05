@@ -8,11 +8,24 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
-
+    mapping(address => uint256) private authorizedContracts;      // Mapping for storing employees
+    
     address private contractOwner;                                      // Account used to deploy contract
-    bool private operational = true;                                    // Blocks all state changes throughout the contract if false
+    bool private operational = true; 
+    address[] airlines = new address[](0);
+    // Blocks all state changes throughout the contract if false
+    // struct Airline {
+    //     bool isRegistered;
+    //     string name;
+    //     string id;
+    //     bool isFunded;
+    //     address[] multiCalls ;
+    // }
 
-    /********************************************************************************************/
+    // mapping(address => Airline) private airlines;
+    // uint private  M = 1;
+    
+     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
     /********************************************************************************************/
 
@@ -23,10 +36,13 @@ contract FlightSuretyData {
     */
     constructor
                                 (
+                                    address firstAirline
                                 ) 
                                 public 
     {
         contractOwner = msg.sender;
+          airlines.push(firstAirline);
+          
     }
 
     /********************************************************************************************/
@@ -55,6 +71,20 @@ contract FlightSuretyData {
         require(msg.sender == contractOwner, "Caller is not contract owner");
         _;
     }
+    modifier isCallerAuthorized()
+    {
+        require(authorizedContracts[msg.sender] == 1, "Caller is not authorized");
+        _;
+    }
+   
+   
+    function authorizeCaller(address contractAddress) external requireContractOwner{
+        authorizedContracts[contractAddress] = 1;
+    }
+    function deauthorizeCaller(address contractAddress) external requireContractOwner{
+        authorizedContracts[contractAddress] = 0;
+
+    }
 
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
@@ -66,12 +96,30 @@ contract FlightSuretyData {
     * @return A bool that is the current operating status
     */      
     function isOperational() 
-                            public 
+                            external 
                             view 
                             returns(bool) 
     {
         return operational;
     }
+    
+    function isAirline(address airlineAddress) 
+                            external 
+                            view 
+                            returns(bool) 
+    {
+        // return (airlines[airlineAddress].multiCalls.length > 0);
+        for(uint c=0; c<airlines.length; c++) {
+                    if (airlines[c]== airlineAddress) {
+                    return  true;
+                     
+                }
+                 
+            }
+        return  false;
+
+    }
+    
 
 
     /**
@@ -79,16 +127,21 @@ contract FlightSuretyData {
     *
     * When operational mode is disabled, all write transactions except for this one will fail
     */    
+    
     function setOperatingStatus
                             (
                                 bool mode
                             ) 
                             external
-                            requireContractOwner 
+                             
+                            requireContractOwner
     {
+        require(mode != operational, "New mode must be different from existing mode");
+        // require(userProfiles[msg.sender].isAdmin, "Caller is not an admin");
+
+        
         operational = mode;
     }
-
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
@@ -100,49 +153,69 @@ contract FlightSuretyData {
     */   
     function registerAirline
                             (   
+                                address newAirline
+                                // string id,
+                                // string name
+                                 
                             )
                             external
-                            pure
+                            requireIsOperational
+                            isCallerAuthorized 
+                            // isAirlineAuthorized  
+                             
     {
+                  airlines.push(newAirline);
+
+       
     }
 
-
+     
    /**
     * @dev Buy insurance for a flight
     *
     */   
     function buy
-                            (                             
+                            (                              
                             )
                             external
+                            requireIsOperational
+                            isCallerAuthorized
                             payable
     {
 
     }
 
-    /**
-     *  @dev Credits payouts to insurees
-    */
-    function creditInsurees
-                                (
-                                )
-                                external
-                                pure
-    {
-    }
+    // /**
+    //  *  @dev Credits payouts to insurees
+    // */
+    // function creditInsurees
+    //                             (
+    //                             )
+    //                             view
+    //                             external
+    //                             requireIsOperational
+    //                             isCallerAuthorized
+                                 
+    // {
+    // }
     
 
-    /**
-     *  @dev Transfers eligible payout funds to insuree
-     *
-    */
-    function pay
-                            (
-                            )
-                            external
-                            pure
-    {
-    }
+    // /**
+    //  *  @dev Transfers eligible payout funds to insuree
+    //  *
+    // */
+    // function pay
+    //                         (
+    //                         )
+    //                         external
+    //                         requireIsOperational
+    //                         isCallerAuthorized
+                             
+    // {
+              
+       
+
+    // }
 
    /**
     * @dev Initial funding for the insurance. Unless there are too many delayed flights
@@ -153,8 +226,11 @@ contract FlightSuretyData {
                             (   
                             )
                             public
+                            requireIsOperational
+                            isCallerAuthorized
                             payable
     {
+        
     }
 
     function getFlightKey
@@ -163,8 +239,11 @@ contract FlightSuretyData {
                             string memory flight,
                             uint256 timestamp
                         )
-                        pure
+                        
                         internal
+                        view
+                        requireIsOperational
+                        isCallerAuthorized
                         returns(bytes32) 
     {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
@@ -183,4 +262,3 @@ contract FlightSuretyData {
 
 
 }
-
